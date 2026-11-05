@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: foodbridge-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: foodbridge-backend
+  template:
+    metadata:
+      labels:
+        app: foodbridge-backend
+    spec:
+      containers:
+        - name: backend
+          image: foodbridge-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "5000"
+            - name: MONGODB_URI
+              value: "mongodb://foodbridge-mongodb:27017/foodbridge"
+            - name: CLIENT_URL
+              value: "http://localhost:30080"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: foodbridge-secret
+                  key: JWT_SECRET
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: foodbridge-backend
+spec:
+  selector:
+    app: foodbridge-backend
+  ports:
+    - port: 5000
+      targetPort: 5000
+  type: ClusterIP
